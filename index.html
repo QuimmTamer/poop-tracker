@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#8B4513">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PoopTracker">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+  <title>Poop Tracker</title>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Main Content ── -->
+  <div id="main-content">
+
+    <!-- ════════════════════════════════════════════
+         TAB: LOG
+    ════════════════════════════════════════════ -->
+    <div id="tab-log" class="tab-page active">
+      <div class="page-header">
+        <h1>💩 Log Visit</h1>
+      </div>
+
+      <!-- Bristol Scale -->
+      <div class="card">
+        <div class="card-title">Bristol Stool Type</div>
+        <div id="bristolGrid" class="bristol-grid"></div>
+        <p id="bristolInfo" style="margin-top:10px;font-size:13px;color:var(--text-muted);min-height:16px;"></p>
+      </div>
+
+      <!-- Date/Time -->
+      <div class="card">
+        <div class="card-title">Date &amp; Time</div>
+        <input type="datetime-local" id="logDatetime">
+      </div>
+
+      <!-- Notes -->
+      <div class="card">
+        <div class="card-title">Notes (optional)</div>
+        <textarea id="logNotes" rows="3" placeholder="Any observations…"></textarea>
+      </div>
+
+      <!-- GPS -->
+      <div class="card">
+        <div class="card-title">Location</div>
+        <div class="gps-status" id="gpsStatus" onclick="requestGPS()" style="cursor:pointer">
+          <div class="gps-dot" id="gpsDot"></div>
+          <span id="gpsText" style="flex:1">Tap to get location</span>
+          <button class="btn btn-secondary btn-sm" id="gpsRefreshBtn" onclick="event.stopPropagation();requestGPS()" style="display:none">Retry</button>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <button class="btn btn-primary" onclick="submitLog()">
+        💩 Log This Visit
+      </button>
+    </div>
+
+    <!-- ════════════════════════════════════════════
+         TAB: HISTORY
+    ════════════════════════════════════════════ -->
+    <div id="tab-history" class="tab-page">
+      <div class="page-header">
+        <h1>📋 History</h1>
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="statTotal">—</div>
+          <div class="stat-label">Total Visits</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statToday">—</div>
+          <div class="stat-label">Today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statWeek">—</div>
+          <div class="stat-label">This Week</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statCommon" style="font-size:20px">—</div>
+          <div class="stat-label">Most Common</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <button class="filter-chip active" data-filter="all">All</button>
+        <button class="filter-chip" data-filter="predicted">Auto-detected</button>
+        <button class="filter-chip" data-filter="gps">Has GPS</button>
+        <button class="filter-chip" data-filter="1">Type 1</button>
+        <button class="filter-chip" data-filter="2">Type 2</button>
+        <button class="filter-chip" data-filter="3">Type 3</button>
+        <button class="filter-chip" data-filter="4">Type 4</button>
+        <button class="filter-chip" data-filter="5">Type 5</button>
+        <button class="filter-chip" data-filter="6">Type 6</button>
+        <button class="filter-chip" data-filter="7">Type 7</button>
+      </div>
+
+      <div id="historyList"></div>
+    </div>
+
+    <!-- ════════════════════════════════════════════
+         TAB: TRACKER
+    ════════════════════════════════════════════ -->
+    <div id="tab-tracker" class="tab-page">
+      <div class="page-header">
+        <h1>📡 Motion Tracker</h1>
+      </div>
+
+      <!-- Pending prediction -->
+      <div id="predictionContainer"></div>
+
+      <!-- Motion ring -->
+      <div class="card">
+        <div class="card-title">Movement Status</div>
+        <div class="motion-display">
+          <div class="motion-ring disabled" id="motionRing">📵</div>
+          <div class="motion-label" id="motionLabel">Tracking Off</div>
+          <div class="motion-sub" id="motionSub">Enable motion tracking below</div>
+        </div>
+      </div>
+
+      <!-- Enable toggle -->
+      <div class="card">
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <h3>Enable Motion Tracking</h3>
+            <p>Uses your phone's accelerometer to detect potential toilet visits</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="motionToggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- How it works -->
+      <div class="card" style="background:var(--surface2)">
+        <div class="card-title">How It Works</div>
+        <p style="font-size:13px;color:var(--text-muted);line-height:1.6">
+          The app watches your phone's accelerometer. When it detects you were
+          <strong>moving</strong> and then became <strong>stationary for 2+ minutes</strong>,
+          it flags a potential toilet visit for you to confirm or dismiss.<br><br>
+          ⚠️ On iPhone, you'll be asked to grant motion permission when you enable tracking.
+          HTTPS is required for motion data on mobile.
+        </p>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════
+         TAB: SETTINGS
+    ════════════════════════════════════════════ -->
+    <div id="tab-settings" class="tab-page">
+      <div class="page-header">
+        <h1>⚙️ Settings</h1>
+      </div>
+
+      <!-- Appearance -->
+      <div class="card">
+        <div class="card-title">Appearance</div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <h3>Dark Mode</h3>
+            <p>Easier on the eyes at night</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="darkModeToggle">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Data -->
+      <div class="card">
+        <div class="card-title">Data</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <button class="btn btn-success" onclick="exportCSV()">
+            📊 Export to CSV (Excel)
+          </button>
+          <button class="btn btn-danger" onclick="clearAllData()">
+            🗑 Clear All Data
+          </button>
+        </div>
+      </div>
+
+      <!-- Install -->
+      <div class="card" style="background:var(--surface2)">
+        <div class="card-title">Install as App</div>
+        <p style="font-size:13px;color:var(--text-muted);line-height:1.7">
+          <strong>iPhone / iPad:</strong> Open in Safari → tap the Share button (□↑) → "Add to Home Screen"<br><br>
+          <strong>Android:</strong> Open in Chrome → tap ⋮ menu → "Add to Home Screen" or "Install App"<br><br>
+          <strong>Windows:</strong> Open in Edge → tap the ⊕ icon in the address bar → "Install"
+        </p>
+      </div>
+
+      <!-- About -->
+      <div class="card" style="background:var(--surface2)">
+        <div class="card-title">About</div>
+        <p style="font-size:13px;color:var(--text-muted);line-height:1.6">
+          Poop Tracker v1.0 · All data stored locally on your device.
+          Nothing is sent to any server. GPS coordinates are only captured when you tap "Get Location".
+        </p>
+      </div>
+    </div>
+
+  </div><!-- /main-content -->
+
+  <!-- ── Bottom Navigation ── -->
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-tab="log" onclick="switchTab('log')">
+      <span class="icon">💩</span>
+      Log
+    </button>
+    <button class="nav-btn" data-tab="history" onclick="switchTab('history')">
+      <span class="icon">📋</span>
+      History
+    </button>
+    <button class="nav-btn" data-tab="tracker" onclick="switchTab('tracker')">
+      <span class="icon">📡</span>
+      Tracker
+    </button>
+    <button class="nav-btn" data-tab="settings" onclick="switchTab('settings')">
+      <span class="icon">⚙️</span>
+      Settings
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "Poop Tracker",
+  "short_name": "PoopTracker",
+  "description": "Track and log your bowel movements",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#8B4513",
+  "theme_color": "#8B4513",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
