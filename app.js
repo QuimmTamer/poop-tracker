@@ -146,46 +146,37 @@ function toggleDarkMode(val) {
 
 // ── GPS ───────────────────────────────────────────────────────────────────────
 
-function requestGPS() {
-  if (!navigator.geolocation) {
-    state.gpsStatus = 'error';
-    renderGPSStatus('GPS not supported by this browser');
-    return;
-  }
-  state.gpsStatus = 'loading';
-  state.gpsCoords = null;
-  renderGPSStatus('Getting location…');
-
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-      state.gpsCoords = {
-        lat: pos.coords.latitude.toFixed(6),
-        lon: pos.coords.longitude.toFixed(6),
-        accuracy: Math.round(pos.coords.accuracy),
-      };
-      state.gpsStatus = 'got';
-      renderGPSStatus(`📍 ${state.gpsCoords.lat}, ${state.gpsCoords.lon} (±${state.gpsCoords.accuracy}m)`);
-    },
-    err => {
-      state.gpsStatus = 'error';
-      const msgs = ['', 'Permission denied', 'Position unavailable', 'Timed out'];
-      renderGPSStatus(msgs[err.code] || 'Location error');
-    },
-    { timeout: 12000, enableHighAccuracy: true }
-  );
+function getGPSCoords(timeoutMs = 6000) {
+  return new Promise(resolve => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    const timer = setTimeout(() => resolve(null), timeoutMs);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        clearTimeout(timer);
+        resolve({
+          lat: pos.coords.latitude.toFixed(6),
+          lon: pos.coords.longitude.toFixed(6),
+          accuracy: Math.round(pos.coords.accuracy),
+        });
+      },
+      () => { clearTimeout(timer); resolve(null); },
+      { timeout: timeoutMs, enableHighAccuracy: false }
+    );
+  });
 }
 
-function renderGPSStatus(msg) {
+function renderGPSStatus(status, msg) {
   const dot = document.getElementById('gpsDot');
   const text = document.getElementById('gpsText');
-  const btn = document.getElementById('gpsRefreshBtn');
   if (!dot) return;
-  dot.className = 'gps-dot ' + state.gpsStatus;
-  text.textContent = msg;
-  if (btn) btn.style.display = state.gpsStatus === 'error' ? 'inline-flex' : 'none';
+  dot.className = 'gps-dot ' + status;
+  if (text) text.textContent = msg;
 }
 
 // ── Motion Tracking ───────────────────────────────────────────────────────────
+
+let _lastMotionTs = 0;
+const MOTION_INTERVAL_MS = 1000; // sample at max 1Hz to save battery
 
 function calcMagnitude(x, y, z) {
   return Math.sqrt(x * x + y * y + z * z);
@@ -251,6 +242,9 @@ function triggerPrediction(time) {
 }
 
 function handleMotionEvent(e) {
+  const now = Date.now();
+  if (now - _lastMotionTs < MOTION_INTERVAL_MS) return;
+  _lastMotionTs = now;
   const acc = e.accelerationIncludingGravity;
   if (!acc) return;
   const mag = calcMagnitude(acc.x || 0, acc.y || 0, acc.z || 0);
@@ -549,6 +543,15 @@ async function submitLog() {
     ? new Date(datetimeEl.value).toISOString()
     : new Date().toISOString();
 
+  // Auto-capture GPS silently
+  renderGPSStatus('loading', '📡 Getting location…');
+  const coords = await getGPSCoords(6000);
+  if (coords) {
+    renderGPSStatus('got', `📍 ${coords.lat}, ${coords.lon} (±${coords.accuracy}m)`);
+  } else {
+    renderGPSStatus('idle', '📍 Captured automatically on save');
+  }
+
   const entry = {
     id: Date.now(),
     datetime,
@@ -558,7 +561,7 @@ async function submitLog() {
     duration: state.selectedDuration,
     comfort: state.selectedComfort,
     notes: notesEl?.value?.trim() || '',
-    coords: state.gpsCoords ? { ...state.gpsCoords } : null,
+    coords: coords,
     predicted: false,
   };
 
@@ -570,8 +573,6 @@ async function submitLog() {
   state.selectedWipes = null;
   state.selectedDuration = null;
   state.selectedComfort = null;
-  state.gpsCoords = null;
-  state.gpsStatus = 'idle';
   if (notesEl) notesEl.value = '';
   if (wipeNotesEl) wipeNotesEl.value = '';
 
@@ -580,7 +581,7 @@ async function submitLog() {
   renderDurationButtons();
   renderComfortButtons();
   setLogTime();
-  renderGPSStatus('Tap to get location');
+  renderGPSStatus('idle', '📍 Captured automatically on save');
   updateLogSummary();
 
   const infoEl = document.getElementById('bristolInfo');
@@ -784,8 +785,7 @@ function init() {
     dmToggle.addEventListener('change', () => toggleDarkMode(dmToggle.checked));
   }
 
-  // GPS init
-  renderGPSStatus('Tap to get location');
+  renderGPSStatus('idle', '📍 Captured automatically on save');
 
   // Motion toggle
   const motionToggle = document.getElementById('motionToggle');
@@ -805,6 +805,16 @@ function init() {
     c.addEventListener('click', () => setHistoryFilter(c.dataset.filter));
   });
 
+  // Pause motion when screen is off / app backgrounded
+  document.addEventListener('visibilitychange', () => {
+    if (!state.motionEnabled) return;
+    if (document.hidden) {
+      window.removeEventListener('devicemotion', handleMotionEvent);
+    } else {
+      window.addEventListener('devicemotion', handleMotionEvent);
+    }
+  });
+
   // Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -819,7 +829,6 @@ window.selectWipes = selectWipes;
 window.selectDuration = selectDuration;
 window.selectComfort = selectComfort;
 window.submitLog = submitLog;
-window.requestGPS = requestGPS;
 window.exportCSV = exportCSV;
 window.clearAllData = clearAllData;
 window.deleteEntry = deleteEntry;

@@ -542,9 +542,9 @@ textarea:focus, input[type="text"]:focus, input[type="datetime-local"]:focus {
 /* ── Toast ── */
 #toast {
   position: fixed;
-  bottom: calc(var(--nav-height) + 16px);
+  top: 16px;
   left: 50%;
-  transform: translateX(-50%) translateY(80px);
+  transform: translateX(-50%) translateY(-80px);
   background: #333;
   color: white;
   padding: 12px 20px;
