@@ -33,6 +33,32 @@
         <p id="bristolInfo" style="margin-top:10px;font-size:13px;color:var(--text-muted);min-height:16px;"></p>
       </div>
 
+      <!-- Wipe Count -->
+      <div class="card">
+        <div class="card-title">🧻 Wipe Count</div>
+        <div class="wipe-header">
+          <div class="wipe-display" id="wipeDisplay">
+            <span id="wipeEmoji">🧻</span>
+            <span id="wipeCountText" style="font-size:13px;color:var(--text-muted)">Select amount</span>
+          </div>
+        </div>
+        <div class="wipe-btn-row" id="wipeButtons"></div>
+        <textarea id="wipeNotes" rows="2" placeholder="Wipe notes — wet wipes used, any irritation…" style="margin-top:12px"></textarea>
+      </div>
+
+      <!-- Duration -->
+      <div class="card">
+        <div class="card-title">⏱ Duration</div>
+        <div class="pill-btn-row" id="durationButtons"></div>
+      </div>
+
+      <!-- Comfort Rating -->
+      <div class="card">
+        <div class="card-title">😊 Experience</div>
+        <div class="comfort-row" id="comfortButtons"></div>
+        <p id="comfortLabel" style="margin-top:8px;font-size:13px;color:var(--text-muted);min-height:16px;text-align:center"></p>
+      </div>
+
       <!-- Date/Time -->
       <div class="card">
         <div class="card-title">Date &amp; Time</div>
@@ -42,7 +68,7 @@
       <!-- Notes -->
       <div class="card">
         <div class="card-title">Notes (optional)</div>
-        <textarea id="logNotes" rows="3" placeholder="Any observations…"></textarea>
+        <textarea id="logNotes" rows="2" placeholder="Any general observations…"></textarea>
       </div>
 
       <!-- GPS -->
@@ -54,6 +80,9 @@
           <button class="btn btn-secondary btn-sm" id="gpsRefreshBtn" onclick="event.stopPropagation();requestGPS()" style="display:none">Retry</button>
         </div>
       </div>
+
+      <!-- Log Summary -->
+      <div class="log-summary" id="logSummary"></div>
 
       <!-- Submit -->
       <button class="btn btn-primary" onclick="submitLog()">

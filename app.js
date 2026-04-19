@@ -79,6 +79,9 @@ const state = {
 
   // Form
   selectedBristol: null,
+  selectedWipes: null,
+  selectedDuration: null,
+  selectedComfort: null,
   notes: '',
 
   // Motion tracking
@@ -404,6 +407,129 @@ function selectBristol(n) {
     const b = BRISTOL.find(x => x.n === n);
     info.textContent = b ? `Type ${b.n}: ${b.desc}` : '';
   }
+  updateLogSummary();
+}
+
+// ── Wipe Count ────────────────────────────────────────────────────────────────
+
+const WIPE_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, '10+'];
+
+const WIPE_FEEDBACK = [
+  { max: 2,   emoji: '🧻',  text: 'Nice and clean' },
+  { max: 4,   emoji: '🧻🧻', text: 'A few wipes' },
+  { max: 6,   emoji: '😅',  text: 'Getting there' },
+  { max: 9,   emoji: '😰',  text: 'Quite a few' },
+  { max: Infinity, emoji: '💀', text: 'Many wipes!' },
+];
+
+function getWipeFeedback(val) {
+  const n = val === '10+' ? 11 : val;
+  return WIPE_FEEDBACK.find(f => n <= f.max) || WIPE_FEEDBACK.at(-1);
+}
+
+function renderWipeButtons() {
+  const row = document.getElementById('wipeButtons');
+  if (!row) return;
+  row.innerHTML = WIPE_OPTIONS.map(v => `
+    <button class="wipe-btn${state.selectedWipes === v ? ' selected' : ''}"
+            onclick="selectWipes(${typeof v === 'string' ? '"' + v + '"' : v})">${v}</button>`
+  ).join('');
+}
+
+function selectWipes(v) {
+  state.selectedWipes = v;
+  renderWipeButtons();
+  const fb = getWipeFeedback(v);
+  const emoji = document.getElementById('wipeEmoji');
+  const text = document.getElementById('wipeCountText');
+  if (emoji) emoji.textContent = fb.emoji;
+  if (text) { text.textContent = `${v} wipe${v === 1 ? '' : 's'} — ${fb.text}`; text.style.color = 'var(--text)'; }
+  updateLogSummary();
+}
+
+// ── Duration ──────────────────────────────────────────────────────────────────
+
+const DURATION_OPTIONS = ['1 min', '2 min', '3 min', '5 min', '10 min', '15 min', '20 min', '30+ min'];
+
+function renderDurationButtons() {
+  const row = document.getElementById('durationButtons');
+  if (!row) return;
+  row.innerHTML = DURATION_OPTIONS.map(v => `
+    <button class="pill-btn${state.selectedDuration === v ? ' selected' : ''}"
+            onclick="selectDuration('${v}')">${v}</button>`
+  ).join('');
+}
+
+function selectDuration(v) {
+  state.selectedDuration = v;
+  renderDurationButtons();
+  updateLogSummary();
+}
+
+// ── Comfort / Experience ──────────────────────────────────────────────────────
+
+const COMFORT_OPTIONS = [
+  { v: 1, emoji: '😖', label: 'Painful' },
+  { v: 2, emoji: '😕', label: 'Hard' },
+  { v: 3, emoji: '😐', label: 'Normal' },
+  { v: 4, emoji: '🙂', label: 'Easy' },
+  { v: 5, emoji: '😊', label: 'Smooth' },
+];
+
+function renderComfortButtons() {
+  const row = document.getElementById('comfortButtons');
+  if (!row) return;
+  row.innerHTML = COMFORT_OPTIONS.map(c => `
+    <button class="comfort-btn${state.selectedComfort === c.v ? ' selected' : ''}"
+            onclick="selectComfort(${c.v})">
+      <span class="c-emoji">${c.emoji}</span>
+      <span class="c-label">${c.label}</span>
+    </button>`
+  ).join('');
+}
+
+function selectComfort(v) {
+  state.selectedComfort = v;
+  renderComfortButtons();
+  const c = COMFORT_OPTIONS.find(x => x.v === v);
+  const lbl = document.getElementById('comfortLabel');
+  if (lbl && c) lbl.textContent = `${c.emoji} ${c.label}`;
+  updateLogSummary();
+}
+
+// ── Log Summary Strip ─────────────────────────────────────────────────────────
+
+function updateLogSummary() {
+  const el = document.getElementById('logSummary');
+  if (!el) return;
+
+  const chips = [];
+
+  if (state.selectedBristol) {
+    const b = BRISTOL.find(x => x.n === state.selectedBristol);
+    if (b) chips.push({ icon: b.emoji, text: `Type ${b.n}`, filled: true });
+  } else {
+    chips.push({ icon: '💩', text: 'No type', filled: false });
+  }
+
+  if (state.selectedWipes !== null) {
+    chips.push({ icon: '🧻', text: `${state.selectedWipes} wipe${state.selectedWipes === 1 ? '' : 's'}`, filled: true });
+  }
+
+  if (state.selectedDuration) {
+    chips.push({ icon: '⏱', text: state.selectedDuration, filled: true });
+  }
+
+  if (state.selectedComfort) {
+    const c = COMFORT_OPTIONS.find(x => x.v === state.selectedComfort);
+    if (c) chips.push({ icon: c.emoji, text: c.label, filled: true });
+  }
+
+  el.innerHTML = chips.map(c =>
+    `<div class="summary-chip${c.filled ? ' filled' : ''}">
+       <span>${c.icon}</span><span>${c.text}</span>
+     </div>`
+  ).join('');
 }
 
 function setLogTime() {
@@ -416,6 +542,7 @@ function setLogTime() {
 
 async function submitLog() {
   const notesEl = document.getElementById('logNotes');
+  const wipeNotesEl = document.getElementById('wipeNotes');
   const datetimeEl = document.getElementById('logDatetime');
 
   const datetime = datetimeEl?.value
@@ -426,6 +553,10 @@ async function submitLog() {
     id: Date.now(),
     datetime,
     bristolType: state.selectedBristol,
+    wipes: state.selectedWipes,
+    wipeNotes: wipeNotesEl?.value?.trim() || '',
+    duration: state.selectedDuration,
+    comfort: state.selectedComfort,
     notes: notesEl?.value?.trim() || '',
     coords: state.gpsCoords ? { ...state.gpsCoords } : null,
     predicted: false,
@@ -436,15 +567,30 @@ async function submitLog() {
 
   // Reset form
   state.selectedBristol = null;
+  state.selectedWipes = null;
+  state.selectedDuration = null;
+  state.selectedComfort = null;
   state.gpsCoords = null;
   state.gpsStatus = 'idle';
   if (notesEl) notesEl.value = '';
+  if (wipeNotesEl) wipeNotesEl.value = '';
+
   renderBristolGrid();
+  renderWipeButtons();
+  renderDurationButtons();
+  renderComfortButtons();
   setLogTime();
   renderGPSStatus('Tap to get location');
+  updateLogSummary();
 
   const infoEl = document.getElementById('bristolInfo');
   if (infoEl) infoEl.textContent = '';
+  const wipeEmoji = document.getElementById('wipeEmoji');
+  const wipeText = document.getElementById('wipeCountText');
+  if (wipeEmoji) wipeEmoji.textContent = '🧻';
+  if (wipeText) { wipeText.textContent = 'Select amount'; wipeText.style.color = 'var(--text-muted)'; }
+  const comfortLabel = document.getElementById('comfortLabel');
+  if (comfortLabel) comfortLabel.textContent = '';
 
   loadHistory();
   updateStats();
@@ -485,6 +631,13 @@ function renderHistory() {
     const b = BRISTOL.find(x => x.n === e.bristolType);
     const emoji = b ? b.emoji : '💩';
     const typeLabel = b ? `Type ${b.n}` : 'Unknown type';
+    const comfort = COMFORT_OPTIONS.find(x => x.v === e.comfort);
+    const pills = [
+      e.wipes != null    ? `🧻 ${e.wipes} wipe${e.wipes === 1 ? '' : 's'}` : null,
+      e.duration         ? `⏱ ${e.duration}` : null,
+      comfort            ? `${comfort.emoji} ${comfort.label}` : null,
+    ].filter(Boolean);
+    const allNotes = [e.notes, e.wipeNotes].filter(Boolean).join(' · ');
     return `
     <div class="history-entry" id="entry-${e.id}">
       <div class="entry-type">${emoji}</div>
@@ -496,7 +649,8 @@ function renderHistory() {
             <button class="btn-icon" onclick="deleteEntry(${e.id})" title="Delete" style="color:var(--danger);font-size:16px;">🗑</button>
           </div>
         </div>
-        <div class="entry-notes">${typeLabel}${e.notes ? ' · ' + escHtml(e.notes) : ''}</div>
+        <div class="entry-notes">${typeLabel}${allNotes ? ' · ' + escHtml(allNotes) : ''}</div>
+        ${pills.length ? `<div class="entry-meta">${pills.map(p => `<span class="entry-pill">${p}</span>`).join('')}</div>` : ''}
         ${e.coords ? `<div class="entry-gps">📍 ${e.coords.lat}, ${e.coords.lon} ±${e.coords.accuracy}m</div>` : ''}
       </div>
     </div>`;
@@ -552,18 +706,23 @@ async function exportCSV() {
   const entries = await DB.getAll();
   if (entries.length === 0) { showToast('No entries to export'); return; }
 
-  const headers = ['Date', 'Time', 'Bristol Type', 'Description', 'Notes', 'Latitude', 'Longitude', 'GPS Accuracy (m)', 'Auto-Detected'];
+  const headers = ['Date', 'Time', 'Bristol Type', 'Description', 'Wipe Count', 'Wipe Notes', 'Duration', 'Experience', 'Notes', 'Latitude', 'Longitude', 'GPS Accuracy (m)', 'Auto-Detected'];
   const rows = entries
     .sort((a, b) => new Date(a.datetime) - new Date(b.datetime))
     .map(e => {
       const d = new Date(e.datetime);
       const b = BRISTOL.find(x => x.n === e.bristolType);
+      const comfort = COMFORT_OPTIONS.find(x => x.v === e.comfort);
       return [
         d.toLocaleDateString('en-US'),
         d.toLocaleTimeString('en-US'),
         e.bristolType ?? '',
         b ? b.desc : '',
-        e.notes.replace(/"/g, '""'),
+        e.wipes ?? '',
+        (e.wipeNotes || '').replace(/"/g, '""'),
+        e.duration ?? '',
+        comfort ? comfort.label : '',
+        (e.notes || '').replace(/"/g, '""'),
         e.coords?.lat ?? '',
         e.coords?.lon ?? '',
         e.coords?.accuracy ?? '',
@@ -611,6 +770,10 @@ function switchTab(tab) {
 function init() {
   applyTheme();
   renderBristolGrid();
+  renderWipeButtons();
+  renderDurationButtons();
+  renderComfortButtons();
+  updateLogSummary();
   setLogTime();
   loadHistory();
 
@@ -652,6 +815,9 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Expose globals for inline handlers
 window.selectBristol = selectBristol;
+window.selectWipes = selectWipes;
+window.selectDuration = selectDuration;
+window.selectComfort = selectComfort;
 window.submitLog = submitLog;
 window.requestGPS = requestGPS;
 window.exportCSV = exportCSV;
