@@ -501,28 +501,21 @@ function updateLogSummary() {
 
   if (state.selectedBristol) {
     const b = BRISTOL.find(x => x.n === state.selectedBristol);
-    if (b) chips.push({ icon: b.emoji, text: `Type ${b.n}`, filled: true });
-  } else {
-    chips.push({ icon: '💩', text: 'No type', filled: false });
+    if (b) chips.push({ icon: b.emoji, text: `Type ${b.n}` });
   }
-
   if (state.selectedWipes !== null) {
-    chips.push({ icon: '🧻', text: `${state.selectedWipes} wipe${state.selectedWipes === 1 ? '' : 's'}`, filled: true });
+    chips.push({ icon: '🧻', text: `${state.selectedWipes} wipe${state.selectedWipes === 1 ? '' : 's'}` });
   }
-
   if (state.selectedDuration) {
-    chips.push({ icon: '⏱', text: state.selectedDuration, filled: true });
+    chips.push({ icon: '⏱', text: state.selectedDuration });
   }
-
   if (state.selectedComfort) {
     const c = COMFORT_OPTIONS.find(x => x.v === state.selectedComfort);
-    if (c) chips.push({ icon: c.emoji, text: c.label, filled: true });
+    if (c) chips.push({ icon: c.emoji, text: c.label });
   }
 
   el.innerHTML = chips.map(c =>
-    `<div class="summary-chip${c.filled ? ' filled' : ''}">
-       <span>${c.icon}</span><span>${c.text}</span>
-     </div>`
+    `<div class="summary-chip filled"><span>${c.icon}</span><span>${c.text}</span></div>`
   ).join('');
 }
 
